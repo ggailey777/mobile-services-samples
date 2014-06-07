@@ -5,59 +5,73 @@
 
     // #endregion
 
-    var parseConnectionString = function (hub, connectionString) {
-        var parts = connectionString.split(';');
-        if (parts.length !== 3) {
-            throw "Error parsing connection string";
-        }
+    // var parseConnectionString = function (hub, connectionString) {
+        // var parts = connectionString.split(';');
+        // if (parts.length !== 3) {
+            // throw "Error parsing connection string";
+        // }
 
-        parts.forEach(function (part) {
-            if (part.indexOf('Endpoint') === 0) {
-                hub.endpoint = 'https' + part.substring(11);
-            } else if (part.indexOf('SharedAccessKeyName') === 0) {
-                hub.sasKeyName = part.substring(20);
-            } else if (part.indexOf('SharedAccessKey') === 0) {
-                hub.sasKeyValue = part.substring(16);
-            }
-        });
-    };
+        // parts.forEach(function (part) {
+            // if (part.indexOf('Endpoint') === 0) {
+                // hub.endpoint = 'https' + part.substring(11);
+            // } else if (part.indexOf('SharedAccessKeyName') === 0) {
+                // hub.sasKeyName = part.substring(20);
+            // } else if (part.indexOf('SharedAccessKey') === 0) {
+                // hub.sasKeyValue = part.substring(16);
+            // }
+        // });
+    // };
 
-    NotificationHub = function (hubPath, connectionString) {
+	NotificationHub = function (mobileClient) {
         console.log("building hub");
 
-        // parse connection string
-        parseConnectionString(this, connectionString);
-        this.hubPath = hubPath;
-
+        //// parse connection string
+        //parseConnectionString(this, connectionString);
+        
+		this.path = "push";
+		this.service = mobileClient.applicationUrl;
+		
         this.gcm = new gcm(this);
         this.apns = new apns(this);
 		this.mpns = new mpns(this);
     };
+	
+    // NotificationHub = function (hubPath, connectionString) {
+        // console.log("building hub");
 
-    var getSelfSignedToken = function (targetUri, sharedKey, ruleId, expiresInMins) {
-        targetUri = encodeURIComponent(targetUri.toLowerCase()).toLowerCase();
+        // // parse connection string
+        // parseConnectionString(this, connectionString);
+        // this.hubPath = hubPath;
 
-        // Set expiration in seconds
-        var expireOnDate = new Date();
-        expireOnDate.setMinutes(expireOnDate.getMinutes() + expiresInMins);
-        var expires = Date.UTC(expireOnDate.getUTCFullYear(), expireOnDate
-            .getUTCMonth(), expireOnDate.getUTCDate(), expireOnDate
-            .getUTCHours(), expireOnDate.getUTCMinutes(), expireOnDate
-            .getUTCSeconds()) / 1000;
-        var tosign = targetUri + '\n' + expires;
+        // this.gcm = new gcm(this);
+        // this.apns = new apns(this);
+		// this.mpns = new mpns(this);
+    // };
 
-        var signature = CryptoJS.HmacSHA256(tosign, sharedKey);
-        var base64signature = signature.toString(CryptoJS.enc.Base64);
-        var base64UriEncoded = encodeURIComponent(base64signature);
+    // var getSelfSignedToken = function (targetUri, sharedKey, ruleId, expiresInMins) {
+        // targetUri = encodeURIComponent(targetUri.toLowerCase()).toLowerCase();
 
-        // construct authorization string
-        var token =
-            "SharedAccessSignature sr=" + targetUri + "&sig="
-            + base64UriEncoded + "&se=" + expires + "&skn=" + ruleId;
+        // // Set expiration in seconds
+        // var expireOnDate = new Date();
+        // expireOnDate.setMinutes(expireOnDate.getMinutes() + expiresInMins);
+        // var expires = Date.UTC(expireOnDate.getUTCFullYear(), expireOnDate
+            // .getUTCMonth(), expireOnDate.getUTCDate(), expireOnDate
+            // .getUTCHours(), expireOnDate.getUTCMinutes(), expireOnDate
+            // .getUTCSeconds()) / 1000;
+        // var tosign = targetUri + '\n' + expires;
 
-        // console.log("signature:" + token);
-        return token;
-    };
+        // var signature = CryptoJS.HmacSHA256(tosign, sharedKey);
+        // var base64signature = signature.toString(CryptoJS.enc.Base64);
+        // var base64UriEncoded = encodeURIComponent(base64signature);
+
+        // // construct authorization string
+        // var token =
+            // "SharedAccessSignature sr=" + targetUri + "&sig="
+            // + base64UriEncoded + "&se=" + expires + "&skn=" + ruleId;
+
+        // // console.log("signature:" + token);
+        // return token;
+    // };
 
     // #region Local storage
     // object: {location: '', deviceToken: ''}
@@ -86,6 +100,7 @@
 	var apnsTemplatePayload = '<?xml version="1.0" encoding="utf-8"?><entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><AppleTemplateRegistrationDescription xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">{0}<DeviceToken>{1}</DeviceToken><BodyTemplate><![CDATA[{2}]]></BodyTemplate></AppleTemplateRegistrationDescription></content></entry>';
     var mpnsNativePayload = '<?xml version="1.0" encoding="utf-8"?><entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><MpnsRegistrationDescription xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">{0}<ChannelUri>{1}</ChannelUri></MpnsRegistrationDescription></content></entry>';
 	var mpnsTemplatePayload = '<?xml version="1.0" encoding="utf-8"?><entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><MpnsTemplateRegistrationDescription xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">{0}<ChannelUri>{1}</ChannelUri><BodyTemplate><![CDATA[{2}]]></BodyTemplate><MpnsHeaders><MpnsHeader><Header>X-WindowsPhone-Target</Header><Value>toast</Value></MpnsHeader><MpnsHeader><Header>X-NotificationClass</Header><Value>2</Value></MpnsHeader></MpnsHeaders></MpnsTemplateRegistrationDescription></content></entry>';
+	
     var buildCreatePayload = function (registration) {
         /* expecting: tags, deviceToken */
 
@@ -142,7 +157,7 @@
 
     // Create registration ID
     var createRegistrationId = function (hub) {
-        var serverUrl = hub.endpoint + hub.hubPath + "/registrationIDs" + API_VERSION;
+        var serverUrl = hub.endpoint + hub.path + "/registrationIDs" + API_VERSION;
 
         var token = getSelfSignedToken(serverUrl, hub.sasKeyValue, hub.sasKeyName, 60);
 
@@ -185,7 +200,7 @@
 
         var registrationPayload = buildCreatePayload(registration);
 
-        var serverUrl = hub.endpoint + hub.hubPath + "/registrations/" + regId + API_VERSION;
+        var serverUrl = hub.endpoint + hub.path + "/registrations/" + regId + API_VERSION;
 
         console.log('serverUrl:' + serverUrl);
         console.log('payload:' + registrationPayload);
@@ -219,7 +234,7 @@
 
     // DELETE
     var deleteRegistration = function (hub, regId) {
-        var serverUrl = hub.endpoint + hub.hubPath + "/registrations/" + regId + API_VERSION;
+        var serverUrl = hub.endpoint + hub.path + "/registrations/" + regId + API_VERSION;
 
         console.log('url:' + serverUrl);
         console.log('registration ID:' + regId);
@@ -255,7 +270,7 @@
         }
 
         // create key
-        var regKey = hub.endpoint + hub.hubPath + '/' + tileKey + '/' + registration.name;
+        var regKey = hub.endpoint + hub.path + '/' + tileKey + '/' + registration.name;
 
         // if key exists
         var deferred = $.Deferred();
@@ -313,7 +328,7 @@
         }
 
         // create key
-        var regKey = hub.endpoint + hub.hubPath + '/' + tileKey + '/' + registration.name;
+        var regKey = hub.endpoint + hub.path + '/' + tileKey + '/' + registration.name;
 
         var deferred = $.Deferred();
         var regInfo = getFromContainer(regKey);

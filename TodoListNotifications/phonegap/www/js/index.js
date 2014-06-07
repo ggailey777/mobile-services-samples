@@ -27,6 +27,8 @@ var MOBILE_SERVICE_APP_KEY = '<mobile_service_application_key>';
 // Numeric part of the project ID assigned by the Google API console.
 var GCM_SENDER_ID = '<gcm_sender_id>';
 
+var client;
+
 var app = {
     // Application Constructor
     initialize: function() {
@@ -46,7 +48,7 @@ var app = {
     onDeviceReady: function() {
         
 		// Define the Mobile Services client.
-        var client = new WindowsAzure.MobileServiceClient(MOBILE_SERVICE_URL, MOBILE_SERVICE_APP_KEY);
+        client = new WindowsAzure.MobileServiceClient(MOBILE_SERVICE_URL, MOBILE_SERVICE_APP_KEY);
         todoItemTable = client.getTable('TodoItem');
 	    
         // #region notification-registration			
@@ -54,8 +56,7 @@ var app = {
 		var pushNotification = window.plugins.pushNotification;
 		
 		// Platform-specific registrations.
-        if ( device.platform == 'android' || device.platform == 'Android' 
-				|| device.platform == "amazon-fireos" ){
+        if ( device.platform == 'android' || device.platform == 'Android'){
             console.log('Android registration');
 			
 			// Register with GCM for Android apps.
@@ -172,6 +173,8 @@ var app = {
                 if (e.regid.length > 0) {
                     console.log("gcm id " + e.regid);
 
+					if (client)
+					{
                     var hub = new NotificationHub(HUB_NAME, HUB_ENDPOINT);
                     
 					// Template registration.
@@ -189,6 +192,7 @@ var app = {
                     // }).fail(function (error) {
                         // alert("Failed registering with hub: " + error);
                     // });
+					}
                 }
                 break;
 
